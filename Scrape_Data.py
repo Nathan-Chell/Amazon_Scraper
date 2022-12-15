@@ -1,100 +1,44 @@
 #Scrape amazon to collect data about the top 10 results for a given item.
 
-from bs4 import BeautifulSoup
-import requests
+import bs4
+from requests_html import HTMLSession
+import pandas as pd
 
 
-def get_title(soup):
 
+def getPrice(url):
+    s = HTMLSession()
+    r = s.get(url)
+    r.html.render(sleep=1)
     try:
-        #Outer tag
-        title = soup.find("span", attrs={"id":'productTitle'})
-
-        #INner tag
-        title_string = title.string.strip()
-
-    except AttributeError:
-        title_string = ""
-
-    return title_string
-
-def get_price(soup):
-    try:
-        price = soup.find("span", attrs={'class':'a-offscreen'}).string.strip()
-    except AttributeError:
+        product = {
+            'title': r.html.xpath('//*[@id="productTitle"]', first=True).text,
+            'price': r.html.xpath('//*[@id="corePriceDisplay_desktop_feature_div"]/div[1]/span[2]/span[1]', first=True).text
+        }
+    except:
         try:
-            price = soup.find("span", attrs={'class':'a-price'}).string.strip()
+            product = {
+                'title': r.html.xpath('//*[@id="productTitle"]', first=True).text,
+                'price': r.html.xpath('//*[@id="corePriceDisplay_desktop_feature_div"]/div[1]/span/span[1]', first=True).text
+            }
         except:
-            price = ""
+            print("Error finding a detail")
 
-    return price
+    return product
 
-def get_rating(soup):
-    try:
-        rating = soup.find('span', attrs={'class':'a-size-base'}).string.strip()
-
-    except AttributeError:
-        try:
-            rating = soup.find("i", attrs={'class', 'a-icon a-icon-star a-star-4-5'}).string.strip()
-        except:
-            rating = ""
-    return rating
-
-def get_review_count(soup):
-    try:
-        review_count = soup.find("span", attrs={'class':'a-size-base s-underline-text'}).string.strip()
-    except AttributeError:
-        try:
-            review_count = soup.find("span", attrs={'id':'acrCustomerReviewText'}).string.strip()
-        except AttributeError:
-            review_count = ""
-    return review_count
-
-def get_availability(soup):
-    try:
-        available = soup.find("div", attrs={'id':'availability'})
-        available = available.find("span").string.strip()
-
-    except AttributeError:
-        try:
-            available = soup.find("span", attrs={'span':'a-size-base a-color-price'}).string.strip()
-        except:
-            available = "Unknown"
-
-    return available
 
 def main():
 
-    HEADERS = ({'User-Agent':
-                'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/44.0.2403.157 Safari/537.36',
-                'Accept-Language': 'en-US'})
 
-    URL = 'https://www.amazon.com/s?k=fridge&ref=nb_sb_noss'
+    urls = ['https://www.amazon.co.uk/Hisense-RR220D4ADF-128x52cm-Freestanding-Fridge/dp/B08NF8RTWW/ref=sr_1_1_sspa?crid=2KIZVNPXF750D&keywords=fridge&qid=1671138738&sprefix=%2Caps%2C115&sr=8-1-spons&sp_csd=d2lkZ2V0TmFtZT1zcF9hdGY&psc=1',
+            'https://www.amazon.co.uk/Undercounter-Larder-Fridge-Freestanding-Capacity/dp/B0B5X2LMGZ/ref=sr_1_2_sspa?crid=2KIZVNPXF750D&keywords=fridge&qid=1671138920&sprefix=%2Caps%2C115&sr=8-2-spons&sp_csd=d2lkZ2V0TmFtZT1zcF9hdGY&psc=1&smid=A23JPYTMWHPQTN',
+            'https://www.amazon.co.uk/COMFEE-Fridge-RCD132WH1-Counter-Reversible/dp/B08Q8ZN4S3/ref=sr_1_3?crid=2KIZVNPXF750D&keywords=fridge&qid=1671138920&sprefix=%2Caps%2C115&sr=8-3&th=1']
 
-    webpage = requests.get(URL, headers=HEADERS)
+    data = []
+    for url in urls:
+        data.append(getPrice(url))
 
-    soup = BeautifulSoup(webpage.content, "lxml")
-
-    links = soup.find_all('a', attrs={'class': 'a-link-normal s-no-outline'})
-
-    links_list = []
-
-    for i, link in enumerate(links):
-        if i < 7:
-            links_list.append(link.get('href'))
-
-    for link in links_list:
-
-        new_webpage = requests.get("https://www.amazon.com" + link, headers=HEADERS)
-
-        new_soup = BeautifulSoup(new_webpage.content, "lxml")
-
-        print("Title = {}".format(get_title(new_soup)))
-        print("Price = {}".format(get_price(new_soup)))
-        print("Rating = {}".format(get_rating(new_soup)))
-        print("reviews = {}".format(get_review_count(new_soup)))
-        print("availability = {}".format(get_availability(new_soup)))
-        print()
+    print(data)
 
 if __name__ == '__main__':
     main()
